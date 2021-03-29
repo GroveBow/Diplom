@@ -1,5 +1,5 @@
 import datetime
-
+from waitress import serve
 from flask import Flask, request
 
 from data import db_session
@@ -274,7 +274,7 @@ def order_assign():
 
 def main():
     db_session.global_init("db/yaschool")
-    app.run()
+    serve(app, host='0.0.0.0', port=8080)
 
 
 main()
