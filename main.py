@@ -274,7 +274,8 @@ def order_assign():
 
 def main():
     db_session.global_init("db/yaschool")
-    serve(app, host='0.0.0.0', port=8080)
+    app.route(host='0.0.0.0', port=8080)
+    #serve(app, host='0.0.0.0', port=8080)
 
 
 main()

@@ -31,7 +31,6 @@ source venv/bin/activate
 pip3 install -r requirements.txt
 ```
 Запускать с помощью команды
-ЭТО НОВЫЙ РЕПОЗИТОРИЙ"
 ```
 python3 main.py
 ```
