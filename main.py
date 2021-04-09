@@ -1,6 +1,8 @@
 import datetime
 from waitress import serve
 from flask import Flask, request, jsonify
+from flask_login import LoginManager, login_user, login_required, logout_user, current_user
+from flask_cors import CORS
 from flask_jwt_extended import (
     JWTManager, jwt_required, create_access_token,
     get_jwt_identity
@@ -16,8 +18,14 @@ from data.users import User
 from data.working_hour import WorkingHour
 from utils import make_resp, check_keys, check_all_keys_in_dict, check_time_in_times
 
+
 app = Flask(__name__)
+CORS(app)
+login_manager = LoginManager()
+login_manager.init_app(app)
 app.config['SECRET_KEY'] = 'flag_is_here'
+jwt = JWTManager(app)
+
 
 
 @app.route('/couriers', methods=['POST'])
