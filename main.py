@@ -1,6 +1,10 @@
 import datetime
 from waitress import serve
-from flask import Flask, request
+from flask import Flask, request, jsonify
+from flask_jwt_extended import (
+    JWTManager, jwt_required, create_access_token,
+    get_jwt_identity
+)
 
 from data import db_session
 from data.courier import Courier, BASE_COMPLETE_TIME
@@ -8,6 +12,7 @@ from data.delivery_hour import DeliveryHour
 from data.order import Order
 from data.order_in_progress import OrderInProgress
 from data.region import Region
+from data.users import User
 from data.working_hour import WorkingHour
 from utils import make_resp, check_keys, check_all_keys_in_dict, check_time_in_times
 
@@ -200,6 +205,22 @@ def orders_complete():
     return make_resp('', 400)
 
 
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    session = db_session.create_session()
+    response_object = {'status': 'success'}
+    post_data = request.get_json()
+    user = session.query(User).filter(User.username == post_data['username']).first()
+    if user and user.check_password(post_data['password']):
+        response_object['message'] = 'Login successfully'
+        access_token = create_access_token(identity=user.username)
+        response_object['token'] = access_token
+    else:
+        response_object['message'] = 'Incorrect username/password'
+        response_object['status'] = False
+    return jsonify(response_object)
+
+
 @app.route("/orders/assign", methods=["POST"])
 def order_assign():
     time_now = datetime.datetime.now()
@@ -274,7 +295,7 @@ def order_assign():
 
 def main():
     db_session.global_init("db/yaschool")
-    app.route(host='0.0.0.0', port=8080)
+    app.run(host='0.0.0.0', port=8080)
     #serve(app, host='0.0.0.0', port=8080)
 
 
