@@ -1,5 +1,4 @@
 import sqlalchemy
-import datetime
 from sqlalchemy import orm
 from .db_session import SqlAlchemyBase
 
@@ -12,4 +11,3 @@ class Region(SqlAlchemyBase):
     courier_id = sqlalchemy.Column(sqlalchemy.Integer, sqlalchemy.ForeignKey("couriers.courier_id"))
 
     courier = orm.relation("Courier")
-

@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block content %}
+{% if type == 'delete' %}
+<p>Курьер номер {{courier_id}} удален</p>
+{% elif type == 'add' %}
+<p>Курьер номер {{courier_id}} добавлен</p>
+{% elif type == 'update' %}
+<p>Курьер номер {{courier_id}} обновлен</p>
+{% endif %}
+<form action="" method="delete">
+    <a href="{{ url_for('couriers_view')}}" class="btn btn-danger">
+            Вернуться в меню
+        </a>
+</form>
+{% endblock %}

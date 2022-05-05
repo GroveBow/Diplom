@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block content %}
+<div>
+{% if current_user.login != 'admin' %}
+<form action="" method="post">
+    <button type="submit">Получить заказы</button>
+</form>
+    <p>Ваш рейтинг: {{rating}}</p>
+    <p>Ваш заработок: {{earning}}</p>
+<h1> Активные заказы </h1>
+{% else %}
+<form action="" method="post">
+    <a href="{{ url_for('order_append')}}" class="btn btn-danger">
+            Добавить заказ
+        </a>
+</form>
+<h1> Заказы в очереди </h1>
+{% endif %}
+{% for order in orders %}
+<h2> {{order.order_id}}</h2>
+<div>
+    <p>Вес — {{order.weight}}</p>
+    <p>Регион — {{order.region}}</p>
+    <p>Время доставки:
+        {% for hour in order.delivery_hours %}
+        {{hour.delivery_hour}}
+        {% endfor %}
+    </p>
+    {% if current_user.login != 'admin' %}
+    <a href="{{ url_for('order_done', order_id=order.order_id)}}" class="btn btn-danger">
+            Доставлено
+        </a>
+    {%endif%}
+    {% if current_user.login == 'admin' %}
+    <a href="{{ url_for('order_delete', id=order.order_id)}}" class="btn btn-danger" name='delete_cour'>
+            Удалить заказ
+    </a>
+    {%endif%}
+</div>
+{% endfor %}
+</div>
+{% endblock %}

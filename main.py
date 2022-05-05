@@ -1,31 +1,254 @@
 import datetime
-from waitress import serve
-from flask import Flask, request, jsonify
-from flask_login import LoginManager, login_user, login_required, logout_user, current_user
-from flask_cors import CORS
-from flask_jwt_extended import (
-    JWTManager, jwt_required, create_access_token,
-    get_jwt_identity
-)
+
+from flask_login import login_user, current_user, LoginManager, login_required, logout_user
+from pip._vendor import requests
+from flask import Flask, request, render_template
+from sqlalchemy import func
 
 from data import db_session
 from data.courier import Courier, BASE_COMPLETE_TIME
 from data.delivery_hour import DeliveryHour
+from forms.couriers_add_form import CourierAddForm
+from forms.loginform import LoginForm
 from data.order import Order
 from data.order_in_progress import OrderInProgress
 from data.region import Region
-from data.users import User
 from data.working_hour import WorkingHour
+from forms.order_append_form import OrderAppendForm
+from forms.order_assign_form import OrderAssignForm
+from forms.register import RegisterForm
 from utils import make_resp, check_keys, check_all_keys_in_dict, check_time_in_times
-
+from flask import redirect
+from data.user import User
 
 app = Flask(__name__)
-CORS(app)
+app.config['SECRET_KEY'] = 'flag_is_here'
 login_manager = LoginManager()
 login_manager.init_app(app)
-app.config['SECRET_KEY'] = 'flag_is_here'
-jwt = JWTManager(app)
 
+
+@app.route('/')
+@app.route('/index')
+def index():
+    now_us = current_user
+    if current_user.is_active:
+        if current_user.role == 0:
+            session = db_session.create_session()
+            courier = session.query(Courier).filter(Courier.courier_id == current_user.login).first()
+            if courier:
+                rating = courier.get_rating(session)
+                earning = courier.get_earning(session)
+                return render_template('index.html', title='Домашняя страница', rating=rating, earning=earning)
+    return render_template('index.html', title='Домашняя страница')
+
+
+@app.route('/logout')
+@login_required
+def logout():
+    logout_user()
+    return redirect("/")
+
+
+@app.route('/register', methods=['GET', 'POST'])
+def reqister():
+    form = RegisterForm()
+    if form.validate_on_submit():
+        if form.password.data != form.password_again.data:
+            return render_template('register.html', title='Регистрация',
+                                   form=form,
+                                   message="Пароли не совпадают")
+        db_sess = db_session.create_session()
+        if db_sess.query(User).filter(User.login == form.login.data).first():
+            return render_template('register.html', title='Регистрация',
+                                   form=form,
+                                   message="Такой пользователь уже есть")
+        if not db_sess.query(Courier).filter(Courier.courier_id == form.login.data).first():
+            return render_template('register.html', title='Регистрация',
+                                   form=form,
+                                   message="Такого курьера нет в базе данных")
+        user = User(
+            login=form.login.data,
+            password=form.password.data,
+            role=0,
+            name=form.name.data,
+            surname=form.surname.data
+        )
+        user.set_password(form.password.data)
+        db_sess.add(user)
+        db_sess.commit()
+        return redirect('/login')
+    return render_template('register.html', title='Регистрация', form=form)
+
+
+@login_manager.user_loader
+def load_user(user_id):
+    db_sess = db_session.create_session()
+    return db_sess.query(User).get(user_id)
+
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    form = LoginForm()
+    if form.validate_on_submit():
+        session = db_session.create_session()
+        user = session.query(User).filter(User.login == form.login.data).first()
+        if user and user.check_password(form.password.data):
+            login_user(user, remember=form.remember_me.data)
+            return redirect("/")
+        return render_template('login.html',
+                               message="Неправильный логин или пароль",
+                               form=form)
+    return render_template('login.html', title='Авторизация', form=form)
+
+
+
+@app.route('/orders_view/<login>', methods=['POST', 'GET'])
+@login_required
+def orders_view(login):
+    session = db_session.create_session()
+    form = OrderAssignForm()
+    if current_user.login == 'admin':
+        orders = session.query(Order).filter(Order.courier_taken == 0).all()
+        return render_template('get_orders.html', orders=orders, form=form)
+    else:
+        if request.method == 'POST':
+            requests.post('http://localhost:8080/orders/assign', json=
+            {
+                "courier_id": login
+            })
+
+        orders = session.query(OrderInProgress).filter(
+            OrderInProgress.courier_id == login, OrderInProgress.duration == 0).all()
+        orders = [i.order for i in orders]
+        courier = session.query(Courier).filter(Courier.courier_id == login).first()
+        rating = courier.get_rating(session)
+        earning = courier.get_earning(session)
+    return render_template('get_orders.html', orders=orders, form=form, rating=rating, earning=earning)
+
+
+@app.route('/order_append', methods=['GET', 'POST'])
+@login_required
+def order_append():
+    form = OrderAppendForm()
+    session = db_session.create_session()
+    max_id = session.query(func.max(Order.order_id)).scalar()
+    if request.method == 'POST':
+        requests.post('http://localhost:8080/orders', json=
+        {
+            'data':
+                [{"order_id": max_id + 1,
+                  "weight": int(form.weight.data),
+                  "region": int(form.region.data),
+                  "delivery_hours": form.delivery_hours.data}]
+
+        })
+        return render_template('confirm_order.html', order_id=max_id + 1, type='add')
+    return render_template('order_add.html', form=form)
+
+
+@app.route('/order_delete/<int:id>', methods=['GET', 'DELETE'])
+@login_required
+def order_delete(id):
+    if current_user.login == 'admin':
+        session = db_session.create_session()
+        order = session.query(Order).filter(Order.order_id == id).first()
+        session.delete(order)
+        session.query(DeliveryHour).filter(DeliveryHour.order_id == None).delete()
+        session.query(OrderInProgress).filter(OrderInProgress.order_id == None).delete()
+        session.commit()
+    return render_template('confirm_order.html', order_id=id, type='delete')
+
+
+
+@app.route('/couriers_view/<int:id>', methods=['GET', 'DELETE'])
+@login_required
+def courier_delete(id):
+    if current_user.login == 'admin':
+        session = db_session.create_session()
+        courier = session.query(Courier).filter(Courier.courier_id == id).first()
+        session.delete(courier)
+        session.query(WorkingHour).filter(WorkingHour.courier_id == None).delete()
+        session.query(Region).filter(Region.courier_id == None).delete()
+        session.query(User).filter(User.login == id).delete()
+        session.commit()
+    return render_template('confirm_courier.html', courier_id=id, type='delete')
+
+
+@app.route('/courier_update/<int:id>', methods=['GET', 'POST'])
+@login_required
+def courier_update(id):
+    session = db_session.create_session()
+    courier = session.query(Courier).filter(Courier.courier_id == id).first()
+    form = CourierAddForm()
+    if current_user.login == 'admin':
+        if request.method == 'POST':
+            requests.patch(f'http://localhost:8080/couriers/{id}', json=
+            {
+                'courier_id': courier.courier_id,
+                'courier_type': form.type.data,
+                "regions": list(map(int, form.regions.data)),
+                "working_hours": form.working_hours.data
+            })
+            return render_template('confirm_courier.html', type='update', courier_id=courier.courier_id)
+    return render_template('courier_add.html', form=form, type='update', id=courier.courier_id)
+
+
+@app.route('/courier_add/', methods=['GET', 'POST'])
+@login_required
+def courier_add():
+    form = CourierAddForm()
+    session = db_session.create_session()
+    max_id = session.query(func.max(Courier.courier_id)).scalar()
+    if request.method == 'POST':
+        requests.post('http://localhost:8080/couriers', json=
+        {
+            'data':
+                [{"courier_id": max_id + 1,
+                  "courier_type": form.type.data,
+                  "regions": list(map(int, form.regions.data)),
+                  "working_hours": form.working_hours.data}]
+
+        })
+        return render_template('confirm_courier.html', courier_id=max_id + 1, type='add')
+    return render_template('courier_add.html', form=form)
+
+
+@app.route('/couriers_view/', methods=['POST', 'GET'])
+@login_required
+def couriers_view():
+    session = db_session.create_session()
+    couriers = session.query(Courier).all()
+    users = []
+    for courier in couriers:
+        user = session.query(User).filter(User.login == courier.courier_id).first()
+        if user:
+            users.append(
+                {
+                    'courier': courier,
+                    'name': user.name,
+                    'surname': user.surname
+                }
+            )
+        else:
+            users.append({
+                'courier': courier,
+                'name': 'Не',
+                'surname': 'зарегистрирован'
+            })
+    return render_template('get_couriers.html', users=users)
+
+
+@app.route('/order_done/<int:order_id>', methods=['POST', 'GET'])
+@login_required
+def order_done(order_id):
+    if request.method == 'GET':
+        requests.post('http://localhost:8080/orders/complete', json=
+        {
+            "courier_id": current_user.login,
+            "order_id": order_id,
+            "complete_time": datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+        })
+    return render_template('confirm_order.html', order_id=order_id, type='complete')
 
 
 @app.route('/couriers', methods=['POST'])
@@ -203,6 +426,7 @@ def orders_complete():
     if complete_order:
         complete_order.complete_time = date_time
         complete_id = complete_order.order_id
+        complete_order.set_duration(session)
         session.merge(complete_order)
         session.commit()
         return make_resp(
@@ -211,22 +435,6 @@ def orders_complete():
             },
             200)
     return make_resp('', 400)
-
-
-@app.route('/login', methods=['GET', 'POST'])
-def login():
-    session = db_session.create_session()
-    response_object = {'status': 'success'}
-    post_data = request.get_json()
-    user = session.query(User).filter(User.username == post_data['username']).first()
-    if user and user.check_password(post_data['password']):
-        response_object['message'] = 'Login successfully'
-        access_token = create_access_token(identity=user.username)
-        response_object['token'] = access_token
-    else:
-        response_object['message'] = 'Incorrect username/password'
-        response_object['status'] = False
-    return jsonify(response_object)
 
 
 @app.route("/orders/assign", methods=["POST"])
@@ -239,7 +447,8 @@ def order_assign():
         weight = {'foot': 10, 'bike': 15, 'car': 50}
         max_weight = weight[courier.courier_type]
         orders_in_progress = courier.orders
-        add_weight = max_weight - sum([i.order.weight for i in orders_in_progress if i.complete_time == BASE_COMPLETE_TIME])
+        add_weight = max_weight - sum(
+            [i.order.weight for i in orders_in_progress if i.complete_time == BASE_COMPLETE_TIME])
         if not courier.working_hours or not courier.regions:
             return make_resp(
                 {
@@ -299,12 +508,10 @@ def order_assign():
         return make_resp('', 400)
 
 
-
-
 def main():
-    db_session.global_init("db/yaschool")
-    app.run(host='0.0.0.0', port=8080)
-    #serve(app, host='0.0.0.0', port=8080)
+    db_session.global_init("db/yaschool.sqlite")
+    # serve(app, host='0.0.0.0', port=8080)
+    app.run(port=8080, host='127.0.0.1')
 
 
 main()

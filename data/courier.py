@@ -33,7 +33,7 @@ class Courier(SqlAlchemyBase):
         session.query(WorkingHour).filter(WorkingHour.courier_id == self.courier_id).delete()
         for i in hours:
             hour = WorkingHour(courier_id=self.courier_id)
-            hour.set_working_hour(i)
+            hour.create_time(i)
             session.add(hour)
         session.commit()
 
@@ -45,29 +45,6 @@ class Courier(SqlAlchemyBase):
             earning = earning + 500 * coeff[order.courier.courier_type]
         return earning
 
-    '''def get_rating(self, session):
-        average_times = []
-        regions = [i.region for i in self.regions]
-        for i in regions:
-            length = len([j for j in self.orders if j.complete_time != BASE_COMPLETE_TIME and j.region == i])
-            average = 0
-            next_time = 0
-            for j in range(1, length + 1):
-                complete_order = [order for order in self.orders if order.complete_time != BASE_COMPLETE_TIME
-                                  and order.region == i][j - 1]
-                end = (complete_order.complete_time.hour * 60 + complete_order.complete_time.minute) * 60 + \
-                      complete_order.complete_time.second
-                if j == 1:
-                    start = (complete_order.assign_time.hour * 60 + complete_order.assign_time.minute) * 60 + \
-                            complete_order.assign_time.second
-                else:
-                    start = next_time
-                next_time = end
-                diff = abs(end - start)
-                average = ((j - 1) * average + diff) // j
-            average_times.append(average)
-
-        return (60*60 - min(min(average_times), 60*60))/(60*60) * 5'''
 
     def get_rating(self, session):
         average_times = {}

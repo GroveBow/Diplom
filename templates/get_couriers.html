@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block content %}
+<div>
+<form action="" method="post">
+    <a href="{{ url_for('courier_add')}}" class="btn btn-danger">
+    Добавить курьера</a>
+</form>
+ <form action="" method="delete">
+<h1> Курьеры </h1>
+{% for user in users %}
+<h2> {{user.courier.courier_id}}</h2>
+<div>
+    <p>Тип — {{user.courier.courier_type}}</p>
+    <p>Регионы доставки:
+        {% for region in user.courier.regions %}
+        {{region.region}}
+        {% endfor %}
+    </p>
+    <p>Часы работы:
+        {% for hour in user.courier.working_hours %}
+        {{hour.get_str_time()}}
+        {% endfor %}
+    </p>
+    <p>
+    Имя, фамилия:
+    </p>
+    <p>
+    {{user.name}}
+    {{user.surname}}
+    </p>
+
+    <a href="{{ url_for('courier_delete', id=user.courier.courier_id)}}" class="btn btn-danger" name='delete_cour'>
+            Удалить курьера
+    </a>
+    <a href="{{ url_for('courier_update', id=user.courier.courier_id)}}" class="btn btn-danger" name='delete_cour'>
+            Редактировать курьера
+    </a>
+</div>
+{% endfor %}
+</div>
+{% endblock %}

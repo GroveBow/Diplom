@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block content %}
+{% if type == 'delete' %}
+<p>Заказ номер {{order_id}} удален</p>
+{% elif type == 'add' %}
+<p>Заказ номер {{order_id}} добавлен</p>
+{% elif type == 'complete' %}
+<p>Заказ номер {{order_id}} доставлен</p>
+{% endif %}
+<form action="" method="post">
+    <a href="{{ url_for('orders_view', login=current_user.login)}}" class="btn btn-danger">
+            Вернуться в меню
+        </a>
+</form>
+{% endblock %}

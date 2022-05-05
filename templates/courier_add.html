@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+
+{% block content %}
+    {% if type == 'update' %}
+    <h1>Редактирование курьера номер {{id}} </h1>
+    {% else %}
+    <h1>Добавление курьера</h1>
+    {% endif %}
+    <form action="" method="post">
+        {{ form.hidden_tag() }}
+        <p>{{form.type.label()}}</p>
+        <p>{{form.type()}}</p>
+        <p>{{form.regions.label()}}</p>
+        <p>{{form.regions()}}</p>
+        <p>{{form.working_hours.label()}}</p>
+        <p>{{form.working_hours()}}</p>
+        <p>
+         {% if type != 'update' %}
+        {{ form.submit(type="submit", class="btn btn-primary") }}
+        {% else %}
+        {{ form.update(type="submit", class="btn btn-primary") }}
+        {%endif%}
+        </p>
+        <div>{{ message }}</div>
+    </form>
+{% endblock %}
