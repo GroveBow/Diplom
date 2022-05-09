@@ -62,14 +62,10 @@ def reqister():
             return render_template('register.html', title='Регистрация',
                                    form=form,
                                    message="Такой пользователь уже есть")
-        if not db_sess.query(Courier).filter(Courier.courier_id == form.login.data).first():
-            return render_template('register.html', title='Регистрация',
-                                   form=form,
-                                   message="Такого курьера нет в базе данных")
         user = User(
             login=form.login.data,
             password=form.password.data,
-            role=0,
+            role=2 if form.login.data != 'admin' else 1,
             name=form.name.data,
             surname=form.surname.data
         )
@@ -77,7 +73,7 @@ def reqister():
         db_sess.add(user)
         db_sess.commit()
         return redirect('/login')
-    return render_template('register.html', title='Регистрация', form=form)
+    return render_template('register.html', title='Регистрация', form=form, message="Заполните все поля")
 
 
 @login_manager.user_loader
@@ -111,18 +107,25 @@ def orders_view(login):
         orders = session.query(Order).filter(Order.courier_taken == 0).all()
         return render_template('get_orders.html', orders=orders, form=form)
     else:
-        if request.method == 'POST':
-            requests.post('http://localhost:8080/orders/assign', json=
-            {
-                "courier_id": login
-            })
+        if current_user.role == 0:
+            if request.method == 'POST' and current_user.role == 0:
+                requests.post('http://localhost:8080/orders/assign', json=
+                {
+                    "courier_id": login
+                })
 
-        orders = session.query(OrderInProgress).filter(
-            OrderInProgress.courier_id == login, OrderInProgress.duration == 0).all()
-        orders = [i.order for i in orders]
-        courier = session.query(Courier).filter(Courier.courier_id == login).first()
-        rating = courier.get_rating(session)
-        earning = courier.get_earning(session)
+            orders = session.query(OrderInProgress).filter(
+                OrderInProgress.courier_id == login, OrderInProgress.duration == 0).all()
+            orders = [i.order for i in orders]
+            courier = session.query(Courier).filter(Courier.courier_id == login).first()
+            rating = courier.get_rating(session)
+            earning = courier.get_earning(session)
+        else:
+            orders = session.query(OrderInProgress).filter(
+                OrderInProgress.customer == login, OrderInProgress.duration == 0).all()
+            orders = [i.order for i in orders]
+            rating = 0
+            earning = 0
     return render_template('get_orders.html', orders=orders, form=form, rating=rating, earning=earning)
 
 
@@ -139,7 +142,8 @@ def order_append():
                 [{"order_id": max_id + 1,
                   "weight": int(form.weight.data),
                   "region": int(form.region.data),
-                  "delivery_hours": form.delivery_hours.data}]
+                  "delivery_hours": form.delivery_hours.data,
+                  "customer": current_user.login}]
 
         })
         return render_template('confirm_order.html', order_id=max_id + 1, type='add')
@@ -199,16 +203,29 @@ def courier_add():
     form = CourierAddForm()
     session = db_session.create_session()
     max_id = session.query(func.max(Courier.courier_id)).scalar()
+    if not max_id:
+        max_id = 0
     if request.method == 'POST':
         requests.post('http://localhost:8080/couriers', json=
         {
             'data':
                 [{"courier_id": max_id + 1,
                   "courier_type": form.type.data,
+                  "courier_login": form.login.data,
                   "regions": list(map(int, form.regions.data)),
                   "working_hours": form.working_hours.data}]
 
         })
+        user = User(
+            login=form.login.data,
+            password=form.password.data,
+            role=0,
+            name=form.name.data,
+            surname=form.surname.data
+        )
+        user.set_password(form.password.data)
+        session.add(user)
+        session.commit()
         return render_template('confirm_courier.html', courier_id=max_id + 1, type='add')
     return render_template('courier_add.html', form=form)
 
@@ -220,7 +237,7 @@ def couriers_view():
     couriers = session.query(Courier).all()
     users = []
     for courier in couriers:
-        user = session.query(User).filter(User.login == courier.courier_id).first()
+        user = session.query(User).filter(User.login == courier.courier_login).first()
         if user:
             users.append(
                 {
@@ -258,8 +275,8 @@ def post_couriers():
     validation_error = []
     ids = []
     for i in get_data['data']:
-        if not check_keys(i, ('courier_id', 'courier_type', 'regions', 'working_hours')) or \
-                not check_all_keys_in_dict(i, ('courier_id', 'courier_type', 'regions', 'working_hours')):
+        if not check_keys(i, ('courier_id', 'courier_type', 'regions', 'working_hours', 'courier_login')) or \
+                not check_all_keys_in_dict(i, ('courier_id', 'courier_type', 'regions', 'working_hours', 'courier_login')):
             validation_error.append({"id": i['courier_id']})
         else:
             ids.append({"id": i['courier_id']})
@@ -284,6 +301,7 @@ def post_couriers():
             courier = Courier(
                 courier_id=i['courier_id'],
                 courier_type=i['courier_type'],
+                courier_login=i['courier_login'],
                 regions=regions,
                 working_hours=working_hours
             )
@@ -351,8 +369,8 @@ def post_orders():
     validation_error = []
     ids = []
     for i in data['data']:
-        if not check_keys(i, ('order_id', 'weight', 'region', 'delivery_hours')) or \
-                not check_all_keys_in_dict(i, ('order_id', 'weight', 'region', 'delivery_hours')):
+        if not check_keys(i, ('order_id', 'weight', 'region', 'delivery_hours', 'customer')) or \
+                not check_all_keys_in_dict(i, ('order_id', 'weight', 'region', 'delivery_hours', 'customer')):
             validation_error.append({"id": i['order_id']})
         else:
             order = session.query(Order).filter(Order.order_id == i['order_id']).first()
@@ -371,6 +389,7 @@ def post_orders():
                 order_id=i['order_id'],
                 weight=i['weight'],
                 region=i['region'],
+                customer=i['customer'],
                 delivery_hours=delivery_hours,
             )
             session.add(order)

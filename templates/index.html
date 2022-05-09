@@ -15,4 +15,8 @@
         <a class="btn btn-primary " href="/couriers_view/">Список курьеров</a>
         <a class="btn btn-primary " href="/orders_view/{{current_user.login}}">Просмотр заказов</a>
     {% endif %}
+    {% if current_user.is_authenticated and current_user.role == 2 %}
+        <a class="btn btn-primary " href="/couriers_view/">Список заказов</a>
+        <a class="btn btn-primary " href="/orders_view/{{current_user.login}}">Новый заказ</a>
+    {% endif %}
 {% endblock %}

@@ -11,6 +11,7 @@ class OrderInProgress(SqlAlchemyBase):
 
     order_id = sqlalchemy.Column(sqlalchemy.Integer, sqlalchemy.ForeignKey("orders.order_id"))
     courier_id = sqlalchemy.Column(sqlalchemy.Integer, sqlalchemy.ForeignKey("couriers.courier_id"))
+    customer = sqlalchemy.Column(sqlalchemy.String, sqlalchemy.ForeignKey("users.login"))
     assign_time = sqlalchemy.Column(sqlalchemy.DateTime, nullable=False)
     complete_time = sqlalchemy.Column(sqlalchemy.DateTime, nullable=True)
     courier_type = sqlalchemy.Column(sqlalchemy.String)

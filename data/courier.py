@@ -19,6 +19,8 @@ class Courier(SqlAlchemyBase):
 
     courier_type = sqlalchemy.Column(sqlalchemy.String, nullable=False)
 
+    courier_login = sqlalchemy.Column(sqlalchemy.String, nullable=False, unique=True)
+
     regions = orm.relation("Region", back_populates='courier')
     working_hours = orm.relation("WorkingHour", back_populates='courier')
     orders = orm.relation("OrderInProgress", back_populates='courier')

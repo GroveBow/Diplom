@@ -2,9 +2,16 @@ from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField, BooleanField, SubmitField, SelectField, SelectMultipleField
 #from wtforms.fields.html5 import EmailField
 #from wtforms.validators import DataRequired
+from wtforms.validators import DataRequired
 
 
 class CourierAddForm(FlaskForm):
+    login = StringField('Логин', validators=[DataRequired()])
+    password = PasswordField('Пароль', validators=[DataRequired()])
+    password_again = PasswordField('Повторите пароль', validators=[DataRequired()])
+    name = StringField('Имя', validators=[DataRequired()])
+    surname = StringField('Фамилия', validators=[DataRequired()])
+
     type = SelectField("Тип курьера",
                                   choices=[('foot', 'Пеший'), ('bike', 'Велосипед'), ('car', 'Машина')])
     regions = SelectMultipleField("Регионы",
