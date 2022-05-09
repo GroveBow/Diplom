@@ -11,6 +11,7 @@ class Order(SqlAlchemyBase):
     weight = sqlalchemy.Column(sqlalchemy.Float, nullable=False)
     region = sqlalchemy.Column(sqlalchemy.Integer, nullable=False)
     courier_taken = sqlalchemy.Column(sqlalchemy.Boolean, default=False)
+    customer = sqlalchemy.Column(sqlalchemy.String, sqlalchemy.ForeignKey("users.login"))
 
     delivery_hours = orm.relation("DeliveryHour", back_populates='order')
 

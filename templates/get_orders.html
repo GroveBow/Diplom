@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block content %}
 <div>
-{% if current_user.login != 'admin' %}
+{% if current_user.role == 0 %}
 <form action="" method="post">
     <button type="submit">Получить заказы</button>
 </form>

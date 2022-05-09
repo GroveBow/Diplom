@@ -57,6 +57,8 @@ class Courier(SqlAlchemyBase):
         length = len([j for j in self.orders if j.complete_time != BASE_COMPLETE_TIME])
         for i in range(1, length + 1):
             order = [order for order in self.orders if order.complete_time != BASE_COMPLETE_TIME][i - 1]
+            if not order:
+                return 0
             if i == 1:
                 start = order.assign_time
             else:

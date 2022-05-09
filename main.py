@@ -97,7 +97,6 @@ def login():
     return render_template('login.html', title='Авторизация', form=form)
 
 
-
 @app.route('/orders_view/<login>', methods=['POST', 'GET'])
 @login_required
 def orders_view(login):
@@ -108,16 +107,17 @@ def orders_view(login):
         return render_template('get_orders.html', orders=orders, form=form)
     else:
         if current_user.role == 0:
+            courier = session.query(Courier).filter(Courier.courier_login == login).first()
             if request.method == 'POST' and current_user.role == 0:
                 requests.post('http://localhost:8080/orders/assign', json=
                 {
-                    "courier_id": login
+                    "courier_id": courier.courier_id
                 })
 
             orders = session.query(OrderInProgress).filter(
-                OrderInProgress.courier_id == login, OrderInProgress.duration == 0).all()
+                OrderInProgress.courier_id == courier.courier_id, OrderInProgress.duration == 0).all()
             orders = [i.order for i in orders]
-            courier = session.query(Courier).filter(Courier.courier_id == login).first()
+
             rating = courier.get_rating(session)
             earning = courier.get_earning(session)
         else:
@@ -135,6 +135,8 @@ def order_append():
     form = OrderAppendForm()
     session = db_session.create_session()
     max_id = session.query(func.max(Order.order_id)).scalar()
+    if not max_id:
+        max_id = 0
     if request.method == 'POST':
         requests.post('http://localhost:8080/orders', json=
         {
@@ -161,7 +163,6 @@ def order_delete(id):
         session.query(OrderInProgress).filter(OrderInProgress.order_id == None).delete()
         session.commit()
     return render_template('confirm_order.html', order_id=id, type='delete')
-
 
 
 @app.route('/couriers_view/<int:id>', methods=['GET', 'DELETE'])
@@ -213,19 +214,12 @@ def courier_add():
                   "courier_type": form.type.data,
                   "courier_login": form.login.data,
                   "regions": list(map(int, form.regions.data)),
-                  "working_hours": form.working_hours.data}]
+                  "working_hours": form.working_hours.data,
+                  "name": form.name.data,
+                  "surname": form.surname.data,
+                  "password": form.password.data}]
 
         })
-        user = User(
-            login=form.login.data,
-            password=form.password.data,
-            role=0,
-            name=form.name.data,
-            surname=form.surname.data
-        )
-        user.set_password(form.password.data)
-        session.add(user)
-        session.commit()
         return render_template('confirm_courier.html', courier_id=max_id + 1, type='add')
     return render_template('courier_add.html', form=form)
 
@@ -257,7 +251,7 @@ def couriers_view():
 
 @app.route('/order_done/<int:order_id>', methods=['POST', 'GET'])
 @login_required
-def order_done(order_id):
+def order_done(order_id):  # Метод завершает выполнение заказа
     if request.method == 'GET':
         requests.post('http://localhost:8080/orders/complete', json=
         {
@@ -268,15 +262,19 @@ def order_done(order_id):
     return render_template('confirm_order.html', order_id=order_id, type='complete')
 
 
-@app.route('/couriers', methods=['POST'])
+@app.route('/couriers', methods=['POST'])  # Метод добавляет курьера в таблицу курьеров и таблицу пользователей
 def post_couriers():
     session = db_session.create_session()
     get_data = request.json
     validation_error = []
     ids = []
     for i in get_data['data']:
-        if not check_keys(i, ('courier_id', 'courier_type', 'regions', 'working_hours', 'courier_login')) or \
-                not check_all_keys_in_dict(i, ('courier_id', 'courier_type', 'regions', 'working_hours', 'courier_login')):
+        if not check_keys(i, (
+                'courier_id', 'courier_type', 'regions', 'working_hours', 'courier_login', 'password', 'name',
+                'surname')) or \
+                not check_all_keys_in_dict(i,
+                                           ('courier_id', 'courier_type', 'regions', 'working_hours', 'courier_login',
+                                            'password', 'name', 'surname')):
             validation_error.append({"id": i['courier_id']})
         else:
             ids.append({"id": i['courier_id']})
@@ -306,6 +304,16 @@ def post_couriers():
                 working_hours=working_hours
             )
             session.add(courier)
+            session.commit()
+            user = User(
+                login=i["courier_login"],
+                password=i["password"],
+                role=0,
+                name=i["name"],
+                surname=i["surname"]
+            )
+            user.set_password(i["password"])
+            session.add(user)
             session.commit()
     if validation_error:
         return make_resp(
@@ -504,7 +512,8 @@ def order_assign():
                 courier_id=courier.courier_id,
                 assign_time=time_now,
                 complete_time=BASE_COMPLETE_TIME,
-                courier_type=courier.courier_type
+                courier_type=courier.courier_type,
+                customer=order.customer
             )
             order.courier_taken = True
             session.add(order_in_progress)
