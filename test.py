@@ -15,6 +15,16 @@ print(post('http://localhost:8080/couriers',
                        "surname": "Петрова",
                        "password": "123"
                    },
+                    {
+                       "courier_id": 5,
+                       "courier_type": "foot",
+                       "regions": [1, 12, 22],
+                       "working_hours": ["00:00-23:00"],
+                       "courier_login": 'Мастер',
+                       "name": "Аня",
+                       "surname": "Петрова",
+                       "password": "123"
+                   },
                    {
                        "courier_id": 2,
                        "courier_type": "bike",

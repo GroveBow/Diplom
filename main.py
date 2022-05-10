@@ -126,6 +126,7 @@ def orders_view(login):
             orders = [i.order for i in orders]
             rating = 0
             earning = 0
+
     return render_template('get_orders.html', orders=orders, form=form, rating=rating, earning=earning)
 
 

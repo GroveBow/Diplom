@@ -23,10 +23,10 @@
     <p>Регион — {{order.region}}</p>
     <p>Время доставки:
         {% for hour in order.delivery_hours %}
-        {{hour.delivery_hour}}
+        {{hour.get_str_time()}}
         {% endfor %}
     </p>
-    {% if current_user.login != 'admin' %}
+    {% if current_user.role != 2 %}
     <a href="{{ url_for('order_done', order_id=order.order_id)}}" class="btn btn-danger">
             Доставлено
         </a>
