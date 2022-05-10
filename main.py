@@ -145,7 +145,8 @@ def order_append():
                   "weight": int(form.weight.data),
                   "region": int(form.region.data),
                   "delivery_hours": form.delivery_hours.data,
-                  "customer": current_user.login}]
+                  "customer": current_user.login,
+                  "delivery_address": form.delivery_address.data}]
 
         })
         return render_template('confirm_order.html', order_id=max_id + 1, type='add')
@@ -377,8 +378,8 @@ def post_orders():
     validation_error = []
     ids = []
     for i in data['data']:
-        if not check_keys(i, ('order_id', 'weight', 'region', 'delivery_hours', 'customer')) or \
-                not check_all_keys_in_dict(i, ('order_id', 'weight', 'region', 'delivery_hours', 'customer')):
+        if not check_keys(i, ('order_id', 'weight', 'region', 'delivery_hours', 'customer', 'delivery_address')) or \
+                not check_all_keys_in_dict(i, ('order_id', 'weight', 'region', 'delivery_hours', 'customer', 'delivery_address')):
             validation_error.append({"id": i['order_id']})
         else:
             order = session.query(Order).filter(Order.order_id == i['order_id']).first()
@@ -394,6 +395,7 @@ def post_orders():
                 delivery_hour.create_time(j)
                 delivery_hours.append(delivery_hour)
             order = Order(
+                delivery_address=i['delivery_address'],
                 order_id=i['order_id'],
                 weight=i['weight'],
                 region=i['region'],

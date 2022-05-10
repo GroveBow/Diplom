@@ -6,6 +6,7 @@ from wtforms.validators import DataRequired, number_range
 
 class OrderAppendForm(FlaskForm):
     weight = StringField('Вес', validators=[DataRequired(), number_range(range(0, 50))])
+    delivery_address = StringField('Адрес доставки', validators=[DataRequired()])
     region = SelectField("Регион",
                          choices=[('1', 'Войковский'), ('2', 'Головинский'), ('3', 'Чеховский'),
                                   ('4', 'Щелковский')])

@@ -10,6 +10,7 @@ class Order(SqlAlchemyBase):
 
     weight = sqlalchemy.Column(sqlalchemy.Float, nullable=False)
     region = sqlalchemy.Column(sqlalchemy.Integer, nullable=False)
+    delivery_address = sqlalchemy.Column(sqlalchemy.String, nullable=False)
     courier_taken = sqlalchemy.Column(sqlalchemy.Boolean, default=False)
     customer = sqlalchemy.Column(sqlalchemy.String, sqlalchemy.ForeignKey("users.login"))
 
