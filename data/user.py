@@ -16,6 +16,7 @@ class User(SqlAlchemyBase, UserMixin):
     role = sqlalchemy.Column(sqlalchemy.Integer, nullable=False)
     name = sqlalchemy.Column(sqlalchemy.String, nullable=False)
     surname = sqlalchemy.Column(sqlalchemy.String, nullable=False)
+    phone_number = sqlalchemy.Column(sqlalchemy.String, nullable=False)
 
 
 

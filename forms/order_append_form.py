@@ -17,5 +17,9 @@ class OrderAppendForm(FlaskForm):
                                                  ('23:00-02:00', '23:00-02:00'),
                                                  ('02:00-05:00', '02:00-05:00'),
                                                  ('05:00-08:00', '05:00-08:00')])
+    contactless_delivery = BooleanField("Бесконтактная доставка")
+    call_before_delivery = BooleanField("Звонок перед доставкой")
+    call_after_delivery = BooleanField("Звонок после доставки")
+    SMS_only = BooleanField("Только СМС-уведомление")
     submit = SubmitField('Добавить')
     update = SubmitField('Обновить')

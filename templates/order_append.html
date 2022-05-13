@@ -15,8 +15,12 @@
         <p>{{form.region()}}</p>
         <p>{{form.delivery_hours.label()}}</p>
         <p>{{form.delivery_hours()}}</p>
+          <p>{{form.contactless_delivery}} {{form.contactless_delivery.label()}}</p><br>
+          <p>{{form.call_before_delivery}} {{form.call_before_delivery.label()}}</p><br>
+          <p>{{form.call_after_delivery}} {{form.call_after_delivery.label()}}</p><br>
+          <p>{{form.SMS_only}} {{form.SMS_only.label()}}</p>
         <p>
-         {% if type != 'update' %}
+        {% if type != 'update' %}
         {{ form.submit(type="submit", class="btn btn-primary") }}
         {% else %}
         {{ form.update(type="submit", class="btn btn-primary") }}

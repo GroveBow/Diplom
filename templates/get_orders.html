@@ -14,6 +14,7 @@
             Добавить заказ
         </a>
 </form>
+
 <h1> Заказы в очереди </h1>
 {% endif %}
 {% for order in orders %}
@@ -26,6 +27,28 @@
         {{hour.get_str_time()}}
         {% endfor %}
     </p>
+    <p>Дополнительные настройки:</p>
+    {% if order.contactless_delivery == 0 %}
+    <p>Бесконтактная доставка — Нет</p>
+    {% else %}
+    <p>Бесконтактная доставка — Да</p>
+    {% endif %}
+    {% if order.call_before_delivery == 0 %}
+    <p>Звонок перед доставкой — Нет</p>
+    {% else %}
+    <p>Звонок перед доставкой — Да</p>
+    {% endif %}
+    {% if order.call_after_delivery == 0 %}
+    <p>Звонок после доставки — Нет</p>
+    {% else %}
+    <p>Звонок после доставки — Да</p>
+    {% endif %}
+    {% if order.SMS_only == 0 %}
+    <p>Только СМС-информирование — Нет</p>
+    {% else %}
+    <p>Только СМС-информирование — Да</p>
+    {% endif %}
+    <p>Статус: {{order.get_status()}}</p>
     {% if current_user.role != 2 %}
     <a href="{{ url_for('order_done', order_id=order.order_id)}}" class="btn btn-danger">
             Доставлено

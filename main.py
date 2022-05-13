@@ -67,7 +67,8 @@ def reqister():
             password=form.password.data,
             role=2 if form.login.data != 'admin' else 1,
             name=form.name.data,
-            surname=form.surname.data
+            surname=form.surname.data,
+            phone_number=form.phone_number.data
         )
         user.set_password(form.password.data)
         db_sess.add(user)
@@ -126,6 +127,9 @@ def orders_view(login):
             orders = [i.order for i in orders]
             rating = 0
             earning = 0
+            orders_in_queue = session.query(Order).filter(Order.customer == current_user.login,
+                                                          Order.courier_taken == 0).all()
+            orders = orders + orders_in_queue
 
     return render_template('get_orders.html', orders=orders, form=form, rating=rating, earning=earning)
 
@@ -134,11 +138,11 @@ def orders_view(login):
 @login_required
 def order_append():
     form = OrderAppendForm()
-    session = db_session.create_session()
-    max_id = session.query(func.max(Order.order_id)).scalar()
-    if not max_id:
-        max_id = 0
     if request.method == 'POST':
+        session = db_session.create_session()
+        max_id = session.query(func.max(Order.order_id)).scalar()
+        if not max_id:
+            max_id = 0
         requests.post('http://localhost:8080/orders', json=
         {
             'data':
@@ -147,11 +151,15 @@ def order_append():
                   "region": int(form.region.data),
                   "delivery_hours": form.delivery_hours.data,
                   "customer": current_user.login,
-                  "delivery_address": form.delivery_address.data}]
+                  "delivery_address": form.delivery_address.data,
+                  "contactless_delivery": form.contactless_delivery.data,
+                  "call_after_delivery": form.call_after_delivery.data,
+                  "call_before_delivery": form.call_before_delivery.data,
+                  "SMS_only": form.SMS_only.data}]
 
         })
         return render_template('confirm_order.html', order_id=max_id + 1, type='add')
-    return render_template('order_add.html', form=form)
+    return render_template('order_append.html', form=form)
 
 
 @app.route('/order_delete/<int:id>', methods=['GET', 'DELETE'])
@@ -379,8 +387,12 @@ def post_orders():
     validation_error = []
     ids = []
     for i in data['data']:
-        if not check_keys(i, ('order_id', 'weight', 'region', 'delivery_hours', 'customer', 'delivery_address')) or \
-                not check_all_keys_in_dict(i, ('order_id', 'weight', 'region', 'delivery_hours', 'customer', 'delivery_address')):
+        if not check_keys(i, (
+        'order_id', 'weight', 'region', 'delivery_hours', 'customer', 'delivery_address', 'contactless_delivery',
+        'call_before_delivery', 'call_after_delivery', 'SMS_only')) or \
+                not check_all_keys_in_dict(i, (
+                'order_id', 'weight', 'region', 'delivery_hours', 'customer', 'delivery_address',
+                'contactless_delivery', 'call_before_delivery', 'call_after_delivery', 'SMS_only')):
             validation_error.append({"id": i['order_id']})
         else:
             order = session.query(Order).filter(Order.order_id == i['order_id']).first()
@@ -402,6 +414,10 @@ def post_orders():
                 region=i['region'],
                 customer=i['customer'],
                 delivery_hours=delivery_hours,
+                contactless_delivery=i['contactless_delivery'],
+                call_before_delivery=i['call_before_delivery'] if not i['SMS_only'] else 0,
+                call_after_delivery=i['call_after_delivery'] if not i['SMS_only'] else 0,
+                SMS_only=i['SMS_only']
             )
             session.add(order)
             session.commit()

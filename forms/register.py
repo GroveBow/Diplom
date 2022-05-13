@@ -11,4 +11,5 @@ class RegisterForm(FlaskForm):
     name = StringField('Имя', validators=[DataRequired()])
     surname = StringField('Фамилия', validators=[DataRequired()])
     submit = SubmitField('Войти')
+    phone_number = StringField("Номер телефона")
     #type = SelectField("Тип", choices=[(0, 'Курьер'), (2, 'Пользователь')], validators=[DataRequired()])
